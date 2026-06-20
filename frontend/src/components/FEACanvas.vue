@@ -61,6 +61,12 @@ function draw() {
     return [x * drawScale + drawOffsetX, y * drawScale + drawOffsetY];
   }
 
+  const playbackHL = store.isPlaybackMode ? store.playbackElementColors : null;
+  const hlElementIds = playbackHL?.hlElementIds || new Set<number>();
+  const hlNodeIds = playbackHL?.hlNodeIds || new Set<number>();
+  const hlLoadNodeIds = playbackHL?.hlLoadNodeIds || new Set<number>();
+  const dimOthers = store.isPlaybackMode && (hlElementIds.size > 0 || hlNodeIds.size > 0 || hlLoadNodeIds.size > 0);
+
   // Draw elements with heatmap colors
   for (const el of elements) {
     const n1 = nodes.find((n) => n.id === el.nodeIds[0]);
@@ -69,19 +75,27 @@ function draw() {
 
     const [x1, y1] = toScreen(n1.x, n1.y);
     const [x2, y2] = toScreen(n2.x, n2.y);
-    const color = store.elementColors.get(el.id) || '#6b7280';
+    let color = store.elementColors.get(el.id) || '#6b7280';
+    if (playbackHL && playbackHL.colors.has(el.id)) {
+      color = playbackHL.colors.get(el.id) || color;
+    }
     const isSelected = store.selectedElement === el.id;
+    const isHLElement = hlElementIds.has(el.id);
+
+    if (dimOthers && !isHLElement && !isSelected) {
+      ctx.globalAlpha = 0.2;
+    }
 
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.strokeStyle = color;
-    ctx.lineWidth = isSelected ? 4 : 2.5;
+    ctx.lineWidth = isSelected ? 4 : (isHLElement ? 4 : 2.5);
     ctx.stroke();
 
-    if (isSelected) {
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
+    if (isSelected || isHLElement) {
+      ctx.strokeStyle = isHLElement ? '#facc15' : '#ffffff';
+      ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 3]);
       ctx.beginPath();
       ctx.moveTo(x1, y1);
@@ -89,6 +103,7 @@ function draw() {
       ctx.stroke();
       ctx.setLineDash([]);
     }
+    ctx.globalAlpha = 1;
   }
 
   // Draw deformed mesh
@@ -116,22 +131,37 @@ function draw() {
   // Draw nodes
   for (const node of nodes) {
     const [x, y] = toScreen(node.x, node.y);
+    const isHLNode = hlNodeIds.has(node.id);
+
+    if (dimOthers && !isHLNode) {
+      ctx.globalAlpha = 0.3;
+    }
+
+    if (isHLNode) {
+      ctx.beginPath();
+      ctx.arc(x, y, 12, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.25)';
+      ctx.fill();
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 2]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
 
     if (node.fixed) {
-      // Draw triangle for fixed nodes
       ctx.beginPath();
       ctx.moveTo(x, y - 8);
       ctx.lineTo(x - 6, y + 4);
       ctx.lineTo(x + 6, y + 4);
       ctx.closePath();
-      ctx.fillStyle = '#f97316';
+      ctx.fillStyle = isHLNode ? '#facc15' : '#f97316';
       ctx.fill();
-      ctx.strokeStyle = '#ea580c';
+      ctx.strokeStyle = isHLNode ? '#eab308' : '#ea580c';
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      // Hatching below
-      ctx.strokeStyle = '#f97316';
+      ctx.strokeStyle = isHLNode ? '#facc15' : '#f97316';
       ctx.lineWidth = 1;
       for (let i = -8; i <= 8; i += 4) {
         ctx.beginPath();
@@ -141,13 +171,21 @@ function draw() {
       }
     } else {
       ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#e2e8f0';
+      ctx.arc(x, y, isHLNode ? 6 : 4, 0, Math.PI * 2);
+      ctx.fillStyle = isHLNode ? '#facc15' : '#e2e8f0';
       ctx.fill();
-      ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = isHLNode ? '#eab308' : '#64748b';
+      ctx.lineWidth = isHLNode ? 2 : 1;
       ctx.stroke();
     }
+
+    if (isHLNode) {
+      ctx.fillStyle = '#facc15';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`#${node.id}`, x, y - 14);
+    }
+    ctx.globalAlpha = 1;
   }
 
   // Draw load arrows
@@ -155,39 +193,54 @@ function draw() {
     const node = nodes.find((n) => n.id === load.nodeId);
     if (!node) continue;
     const [x, y] = toScreen(node.x, node.y);
+    const isHLLoad = hlLoadNodeIds.has(load.nodeId);
+
+    if (dimOthers && !isHLLoad) {
+      ctx.globalAlpha = 0.3;
+    }
 
     const mag = Math.sqrt(load.fx ** 2 + load.fy ** 2);
     if (mag === 0) continue;
 
-    const arrowLen = 30;
+    const arrowLen = isHLLoad ? 45 : 30;
     const dx = (load.fx / mag) * arrowLen;
     const dy = (load.fy / mag) * arrowLen;
 
-    // Arrow line
+    if (isHLLoad) {
+      ctx.beginPath();
+      ctx.arc(x, y, 18, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+      ctx.fill();
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 2]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     ctx.beginPath();
     ctx.moveTo(x - dx, y - dy);
     ctx.lineTo(x, y);
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = isHLLoad ? '#f43f5e' : '#ef4444';
+    ctx.lineWidth = isHLLoad ? 4 : 2.5;
     ctx.stroke();
 
-    // Arrow head
-    const headLen = 8;
+    const headLen = isHLLoad ? 12 : 8;
     const angle = Math.atan2(dy, dx);
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(x - headLen * Math.cos(angle - 0.4), y - headLen * Math.sin(angle - 0.4));
     ctx.moveTo(x, y);
     ctx.lineTo(x - headLen * Math.cos(angle + 0.4), y - headLen * Math.sin(angle + 0.4));
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = isHLLoad ? '#f43f5e' : '#ef4444';
+    ctx.lineWidth = isHLLoad ? 3 : 2;
     ctx.stroke();
 
-    // Label
-    ctx.fillStyle = '#fca5a5';
-    ctx.font = '10px sans-serif';
+    ctx.fillStyle = isHLLoad ? '#fda4af' : '#fca5a5';
+    ctx.font = isHLLoad ? 'bold 11px sans-serif' : '10px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(`${(mag / 1000).toFixed(1)}kN`, x - dx / 2, y - dy / 2 - 6);
+    ctx.globalAlpha = 1;
   }
 
   // Draw color legend bar
@@ -343,6 +396,9 @@ watch(
     store.selectedElement,
     store.heatmapMode,
     store.elementColors,
+    store.isPlaybackMode,
+    store.currentStepIndex,
+    store.playbackElementColors,
   ],
   () => nextTick(draw),
   { deep: true }

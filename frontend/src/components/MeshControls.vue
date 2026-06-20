@@ -38,13 +38,21 @@ const store = useFEAStore();
       </div>
     </div>
 
-    <!-- Solve button -->
-    <button
-      @click="store.solve()"
-      class="w-full py-2 rounded text-xs font-bold bg-green-700 text-white hover:bg-green-600 transition"
-    >
-      ⚙ 求解 FEA
-    </button>
+    <!-- Solve buttons -->
+    <div class="grid grid-cols-2 gap-1">
+      <button
+        @click="store.solve()"
+        class="py-2 rounded text-xs font-bold bg-green-700 text-white hover:bg-green-600 transition"
+      >
+        ⚙ 快速求解
+      </button>
+      <button
+        @click="store.solveWithSteps()"
+        class="py-2 rounded text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 transition"
+      >
+        🎬 分步回放
+      </button>
+    </div>
 
     <!-- Deformed mesh toggle -->
     <label class="flex items-center gap-2 cursor-pointer">

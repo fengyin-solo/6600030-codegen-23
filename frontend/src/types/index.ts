@@ -37,3 +37,39 @@ export interface FEAResult {
   maxStress: number;
   reactionForces: { nodeId: number; fx: number; fy: number }[];
 }
+
+export type StepType =
+  | 'init'
+  | 'assemble_element'
+  | 'assemble_load'
+  | 'apply_constraint'
+  | 'solve_system'
+  | 'compute_stress'
+  | 'compute_reaction'
+  | 'complete';
+
+export interface PlaybackStep {
+  id: number;
+  type: StepType;
+  title: string;
+  description: string;
+  phase: number;
+  K: number[][];
+  F: number[];
+  U?: number[];
+  stresses?: number[];
+  strains?: number[];
+  forces?: number[];
+  reactionForces?: { nodeId: number; fx: number; fy: number }[];
+  highlight?: {
+    elementIds?: number[];
+    nodeIds?: number[];
+    dofs?: number[];
+    loadNodeIds?: number[];
+  };
+  detail?: Record<string, any>;
+}
+
+export interface FEAResultWithPlayback extends FEAResult {
+  playbackSteps: PlaybackStep[];
+}
